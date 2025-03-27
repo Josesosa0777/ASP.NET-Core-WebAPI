@@ -62,7 +62,16 @@ namespace api.Repository
                 }
             }
 
-            return await stocks.ToListAsync();
+            // If no sorting criteria is provided, apply a default order (e.g., by Id)
+            if (string.IsNullOrWhiteSpace(query.SortBy))
+            {
+                stocks = stocks.OrderBy(s => s.Id);  // Default sort by Id (or any other field)
+            }
+            
+            // Pagination: Skip and Take based on PageNumber and PageSize
+            var skipNumber = (query.PageNumber -1) * query.PageSize;
+
+            return await stocks.Skip(skipNumber).Take(query.PageSize).ToListAsync();
         }
 
         public async Task<Stock?> GetByIdAsync(int id)
