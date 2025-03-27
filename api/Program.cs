@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using NSwag;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +21,17 @@ builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, _) =>
     {
+        // Ensure Components is initialized
+        if (document.Components == null)
+        {
+            document.Components = new Microsoft.OpenApi.Models.OpenApiComponents();
+        }
+
+        // Initialize the SecuritySchemes if it's null
+        if (document.Components.SecuritySchemes == null)
+        {
+            document.Components.SecuritySchemes = new Dictionary<string, Microsoft.OpenApi.Models.OpenApiSecurityScheme>();
+        }
         document.Info = new()
         {
             Title = "Maturity Metrics API",
@@ -35,6 +48,32 @@ builder.Services.AddOpenApi(options =>
                 Url = new Uri("https://api.example.com/support")
             }
         };
+
+        // Add the Bearer security scheme to the document
+        document.Components.SecuritySchemes.Add("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            In = ParameterLocation.Header,
+            BearerFormat = "JWT",
+            Description = "Please enter a valid JWT token in the following format: `Bearer {token}`"
+        });
+        // Add security requirement to all operations in the API
+    document.SecurityRequirements.Add(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] { }
+        }
+    });
+
         return Task.CompletedTask;
     });
 });
@@ -96,6 +135,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage(); 
     app.MapOpenApi();
     app.UseSwaggerUi(options =>
     {
